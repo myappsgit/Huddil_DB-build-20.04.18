@@ -863,7 +863,7 @@ DELIMITER ;
 
 LOCK TABLES `user_pref` WRITE;
 /*!40000 ALTER TABLE `user_pref` DISABLE KEYS */;
-INSERT INTO `user_pref` VALUES (1,NULL,5,NULL,0,'admin@huddil.com','+910000000001','admin','Blocked by the admin.',NULL),(2,NULL,6,NULL,0,'advisor@huddil.com','+910000000002','advisor','Activated by the admin.',NULL);
+INSERT INTO `user_pref` VALUES (1,NULL,5,NULL,'admin@huddil.com','+910000000001','admin','Blocked by the admin.',NULL, 0),(2,NULL,6,NULL,'advisor@huddil.com','+910000000002','advisor','Activated by the admin.',NULL, 0);
 /*!40000 ALTER TABLE `user_pref` ENABLE KEYS */;
 UNLOCK TABLES;
 
