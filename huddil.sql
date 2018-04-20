@@ -89,7 +89,6 @@ CREATE TABLE `booking` (
   `facilityId` int(11) NOT NULL,
   `bookedTime` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `status` int(11) NOT NULL DEFAULT '0',
-  `approvedTime` timestamp NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `booking_facility_idx` (`facilityId`),
   KEY `booking_user_pref_idx` (`userId`),
@@ -121,7 +120,6 @@ CREATE TABLE `booking_history` (
   `bookingId` int(11) NOT NULL,
   `paymentId` varchar(45) DEFAULT NULL,
   `seats` int(11) NOT NULL,
-  `approvedTime` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `paymentId_UNIQUE` (`paymentId`),
   KEY `bookingHistory_user_idx` (`userId`),
@@ -182,7 +180,6 @@ CREATE TABLE `cancellation` (
   `cancelledDateTime` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `bookingId` int(11) NOT NULL,
   `bookedStatus` int(11) NOT NULL,
-  `approvedTime` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `cancellation_facility_idx` (`facilityId`),
   KEY `cancellation_bookedUser_idx` (`bookedUserId`),
@@ -287,7 +284,7 @@ CREATE TABLE `facility` (
   `spUserId` int(11) NOT NULL,
   `advUserId` int(11) DEFAULT NULL,
   `paymnetType` tinyint(1) NOT NULL COMMENT '1 - Online Only\n2 - Offline Only\n3 - Both Online and Offline',
-  `dateTime` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `dateTime` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `facility_facility_type_idx` (`typeName`),
   KEY `facility_city_idx` (`cityName`),
@@ -488,7 +485,7 @@ CREATE TABLE `facility_type` (
 
 LOCK TABLES `facility_type` WRITE;
 /*!40000 ALTER TABLE `facility_type` DISABLE KEYS */;
-INSERT INTO `facility_type` VALUES (3,'Co-Working Space'),(4,'Conference Room'),(1,'Meeting Room'),(2,'Training Room'),(5,'Private Room');
+INSERT INTO `facility_type` VALUES (3,'Co-Working Space'),(4,'Conference Room'),(1,'Meeting Room'),(2,'Training Room');
 /*!40000 ALTER TABLE `facility_type` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -546,16 +543,6 @@ CREATE TABLE `least_cost` (
   UNIQUE KEY `typeName_UNIQUE` (`typeName`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `least_cost`
---
-
-LOCK TABLES `least_cost` WRITE;
-/*!40000 ALTER TABLE `least_cost` DISABLE KEYS */;
-INSERT INTO `least_cost` VALUES (1,'Meeting Room','0'),(2,'Training Room','0'),(3,'Co-Working Space','0'),(4,'Conference Room','0');
-/*!40000 ALTER TABLE `least_cost` ENABLE KEYS */;
-UNLOCK TABLES;
 
 --
 -- Table structure for table `locality`
@@ -863,7 +850,7 @@ DELIMITER ;
 
 LOCK TABLES `user_pref` WRITE;
 /*!40000 ALTER TABLE `user_pref` DISABLE KEYS */;
-INSERT INTO `user_pref` VALUES (1,NULL,5,NULL,'admin@huddil.com','+910000000001','admin','Blocked by the admin.',NULL, 0),(2,NULL,6,NULL,'advisor@huddil.com','+910000000002','advisor','Activated by the admin.',NULL, 0);
+INSERT INTO `user_pref` VALUES (1,NULL,5,NULL,'admin@huddil.com','+910000000001','admin','Blocked by the admin.',NULL,0),(2,NULL,6,NULL,'advisor@huddil.com','+910000000002','advisor','Activated by the admin.',NULL,0);
 /*!40000 ALTER TABLE `user_pref` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -1047,7 +1034,7 @@ BEGIN
 	ELSEIF(v_userType != 6 AND v_userType !=7)THEN
         SET v_count = -2;
 	ELSE	
-		SET @query = "SELECT DISTINCT b.id as bookingId, b.fromTime as bookedFrom, b.toTime as bookedTo, b.bookedTime, b.approvedTime, b.totalPrice, IF(b.paymentMethod = 'offline', 'Offline', 'Online') AS paymentMethod, b.status, f.title, f.typeName, lo.name, lo.address, p.displayName, p.emailId, p.mobileNo, b.seats FROM huddil.booking b JOIN huddil.facility f ON f.id = b.facilityId JOIN huddil.city c ON c.name = f.cityName JOIN huddil.locality l ON l.name = f.localityName JOIN huddil.location lo ON lo.id = f.locationId JOIN huddil.facility_type t ON t.name = f.typeName";
+		SET @query = "SELECT DISTINCT b.id as bookingId, b.fromTime as bookedFrom, b.toTime as bookedTo, b.bookedTime, b.totalPrice, IF(b.paymentMethod = 'offline', 'Offline', 'Online') AS paymentMethod, b.status, f.title, f.typeName, lo.name, lo.address, p.displayName, p.emailId, p.mobileNo, b.seats FROM huddil.booking b JOIN huddil.facility f ON f.id = b.facilityId JOIN huddil.city c ON c.name = f.cityName JOIN huddil.locality l ON l.name = f.localityName JOIN huddil.location lo ON lo.id = f.locationId JOIN huddil.facility_type t ON t.name = f.typeName";
 		SET @queryOne= "SELECT COUNT(DISTINCT b.id) INTO @v_totalRecords FROM huddil.booking b JOIN huddil.facility f ON f.id = b.facilityId JOIN huddil.city c ON c.name = f.cityName JOIN huddil.locality l ON l.name = f.localityName JOIN huddil.location lo ON lo.id = f.locationId JOIN huddil.facility_type t ON t.name = f.typeName";
 		
 		IF(v_userType = 7)THEN
@@ -1167,9 +1154,11 @@ SELECT TIMESTAMPDIFF(SECOND, now(), v_toTime)  % 3600;
 
 IF ((TIMESTAMPDIFF(SECOND, now(), v_toTime) % 3600) < 0)THEN
 	
-    INSERT INTO huddil.booking_history(`fromDateTime`, `toDateTime`, `bookedTime`, `price`, `paymentMethod`, `userId`, `facilityId`, `bookingId`, `approvedTime`)
-    SELECT fromTime, toTime, bookedTime, totalPrice, paymentMethod, userId, facilityId, id, approvedTime FROM huddil.booking
+    INSERT INTO huddil.booking_history(`fromDateTime`, `toDateTime`, `bookedTime`, `price`, `paymentMethod`, `userId`, `facilityId`, `bookingId`)
+    SELECT fromTime, toTime, bookedTime, totalPrice, paymentMethod, userId, facilityId, id FROM huddil.booking
 	WHERE id = v_bookingId;
+    
+    
     /*DELETE b.* FROM huddil.booking b WHERE b.id = v_bookingId; */
 END IF; 
 END ;;
@@ -1345,7 +1334,7 @@ SET v_lowerBound = (v_pageNo - 1) * v_count;
 			SET v_count =0;
         END IF;
    
-	ELSEIF(v_operation =5)THEN
+    ELSEIF(v_operation =5)THEN
     
 		SELECT b.bookingId, b.bookedTime, b.facilityId as facilityId,
 		IF(b.paymentMethod = 'offline', 'Offline', 'Online') AS paymentMode, f.title, f.typeName as typeName, f.cityName,
@@ -1368,7 +1357,7 @@ SET v_lowerBound = (v_pageNo - 1) * v_count;
 
 
     ELSEIF(v_operation =4)THEN
-		SET @query = "SELECT DISTINCT b.id as bookingId, b.fromTime as bookedFrom, b.toTime as bookedTo, b.bookedTime, b.approvedTime, b.totalPrice, b.paymentMethod, b.status, f.title, f.typeName, lo.name, lo.address, p.displayName, p.emailId, p.mobileNo, b.seats 
+		SET @query = "SELECT DISTINCT b.id as bookingId, b.fromTime as bookedFrom, b.toTime as bookedTo, b.bookedTime, b.totalPrice, b.paymentMethod, b.status, f.title, f.typeName, lo.name, lo.address, p.displayName, p.emailId, p.mobileNo, b.seats 
 					FROM huddil.booking b 
 						JOIN huddil.facility f ON f.id = b.facilityId 
 						JOIN huddil.location lo ON lo.id = f.locationId 
@@ -1519,7 +1508,7 @@ BEGIN
         SET v_count = -2;
 	ELSE	
      
-		SET @query = "SELECT DISTINCT b.bookingId,b.bookedFrom, b.bookedTo, b.bookedTime, b.approvedTime, b.totalPrice, IF(b.paymentMethod = 'offline', 'Offline', 'Online') AS paymentMethod, IF(bookedStatus = 4, 4, 2) as status, f.title, f.typeName, lo.name, lo.address, p.displayName, p.emailId, p.mobileNo, b.seats FROM huddil.cancellation b JOIN huddil.facility f ON f.id = b.facilityId JOIN huddil.city c ON c.name = f.cityName JOIN huddil.locality l ON l.name = f.localityName JOIN huddil.location lo ON lo.id = f.locationId JOIN huddil.facility_type t ON t.name = f.typeName";
+		SET @query = "SELECT DISTINCT b.bookingId,b.bookedFrom, b.bookedTo, b.bookedTime, b.totalPrice, IF(b.paymentMethod = 'offline', 'Offline', 'Online') AS paymentMethod, IF(bookedStatus = 4, 4, 2) as status, f.title, f.typeName, lo.name, lo.address, p.displayName, p.emailId, p.mobileNo, b.seats FROM huddil.cancellation b JOIN huddil.facility f ON f.id = b.facilityId JOIN huddil.city c ON c.name = f.cityName JOIN huddil.locality l ON l.name = f.localityName JOIN huddil.location lo ON lo.id = f.locationId JOIN huddil.facility_type t ON t.name = f.typeName";
 		SET @queryOne= "SELECT COUNT(DISTINCT b.bookingId) INTO @v_totalRecords FROM huddil.cancellation b JOIN huddil.facility f ON f.id = b.facilityId JOIN huddil.city c ON c.name = f.cityName JOIN huddil.locality l ON l.name = f.localityName JOIN huddil.location lo ON lo.id = f.locationId JOIN huddil.facility_type t ON t.name = f.typeName";
 		
 		IF(v_userType = 7)THEN
@@ -1676,10 +1665,10 @@ BEGIN
     DECLARE v_hour INT;
     DECLARE v_day INT;
     DECLARE v_month INT;
-    DECLARE v_nextDate DATE;
     DECLARE v_fromDate DATE;
-    DECLARE v_fromDateTime TIMESTAMP;
     DECLARE v_toDate DATE;
+    DECLARE v_fromDay INT;
+    DECLARE v_toDay INT;
     DECLARE v_fromTime TIME;
     DECLARE v_toTime TIME;
     DECLARE v_costPerHour DOUBLE;
@@ -1695,10 +1684,13 @@ BEGIN
     DECLARE v_closedDays INT;
     DECLARE v_startWeekDay INT;
     DECLARE v_endWeekDay INT;
+    DECLARE v_lastDayOfMonth DATE;
+    DECLARE v_firstDayOfMonth DATE;
+    DECLARE v_monthRollOver BOOLEAN;
 
     SELECT userId, userType INTO v_userId, v_userType FROM user_pref WHERE sessionId = p_sessionId;
-    SELECT CAST(p_fromDateTime AS TIME), CAST(p_toDateTime AS TIME), CAST(p_fromDateTime AS DATE), CAST(p_toDateTime AS DATE)
-		INTO v_fromTime, v_toTime, v_fromDate, v_toDate;
+    SELECT CAST(p_fromDateTime AS TIME), CAST(p_toDateTime AS TIME), CAST(p_fromDateTime AS DATE), CAST(p_toDateTime AS DATE), DAY(p_fromDateTime), DAY(p_toDateTime) 
+		INTO v_fromTime, v_toTime, v_fromDate, v_toDate, v_fromDay, v_toDay;
 	SELECT id INTO v_approverd FROM status WHERE name = 'Approved and Not Verified';
 	SELECT id INTO v_verified FROM status WHERE name = 'Approved and Verified';
 	SELECT id INTO v_pendingVerification FROM status WHERE name = 'Verify request';
@@ -1710,26 +1702,53 @@ BEGIN
 		JOIN city c ON c.id = l.cityId
 		JOIN tax t ON t.id = c.taxId
 		WHERE f.id = p_fId;
-	IF(v_costPerHour = 0 AND v_costPerDay = 0 AND v_costPerMonth = 0) THEN
-		SET p_result = 17;
-	ELSEIF(v_costPerHour = 0 AND v_costPerDay = 0 AND v_costPerMonth <> 0) THEN
-		SET v_costPerHour = v_costPerMonth;
-		SET v_costPerDay = v_costPerMonth;
-	ELSEIF(v_costPerHour = 0 AND v_costPerDay <> 0 AND v_costPerMonth = 0) THEN
-		SET v_costPerHour = v_costPerDay;
-	ELSEIF(v_costPerHour = 0 AND v_costPerDay <> 0 AND v_costPerMonth <> 0) THEN
-		SET v_costPerHour = v_costPerDay;
+	SELECT TIMESTAMPDIFF(MINUTE, p_fromDateTime, p_toDateTime) % 60, TIMESTAMPDIFF(HOUR, p_fromDateTime, p_toDateTime) INTO v_minute, v_hour;
+	SET v_lastDayOfMonth = LAST_DAY(p_toDateTime);
+    SET v_firstDayOfMonth = ADDDATE(LAST_DAY(SUBDATE(v_fromDate, INTERVAL 1 MONTH)),1);
+    IF(v_lastDayOfMonth = v_toDate AND v_firstDayOfMonth = v_fromDate) THEN
+		SET v_monthRollOver = TRUE;
+	ELSE
+		SET v_monthRollOver = FALSE;
     END IF;
-
-   	SELECT TIMESTAMPDIFF(MINUTE, p_fromDateTime, p_toDateTime) % 60, TIMESTAMPDIFF(HOUR, p_fromDateTime, p_toDateTime) 
-		INTO v_minute, v_hour;
-	SELECT DATE_ADD(p_fromDateTime, INTERVAL 1 SECOND), DATE_SUB(p_toDateTime, INTERVAL 1 SECOND) INTO p_fromDateTime, p_toDateTime;
+    SET v_day = 0;
+    SET v_month = 0;
+    IF(MONTH(v_fromDate) = MONTH(v_toDate) AND YEAR(v_fromDate) = YEAR(v_toDate) AND v_monthRollOver = FALSE) THEN
+		SET v_day = DATEDIFF(p_toDateTime, p_fromDateTime) + 1;
+        SET v_month = 0;
+	ELSE
+		IF(v_fromDay  = v_toDay) THEN
+			SET v_day = 1;
+		ELSEIF(v_fromDay <> DAY(ADDDATE(v_toDate, 1)) AND v_monthRollOver = FALSE) THEN
+			IF(v_toDay > v_fromDay) THEN
+				SET v_day = v_toDay - v_fromDay + 1;
+			ELSE
+				SET v_day = DAY(LAST_DAY(v_fromDate)) - v_fromDay + v_toDay + 1;
+            END IF;
+        END IF;
+        IF(v_monthRollOver = TRUE) THEN
+			SET v_toDate = ADDDATE(v_toDate, 1);
+        END IF;
+        IF(MONTH(v_toDate) > MONTH(v_fromDate)) THEN
+			SET v_month = MONTH(v_toDate) - MONTH(v_fromDate);
+		ELSE
+			SET v_month = 12 - MONTH(v_fromDate) + MONTH(v_toDate);
+        END IF;
+        SET v_fromDay = DAY(LAST_DAY(v_toDate)) + 1;
+        SELECT DATEDIFF(v_toDate, v_fromDate);
+        IF(DATEDIFF(v_toDate, v_fromDate) > 365) THEN
+			SET v_month  = v_month % 12;
+			SET v_month = v_month + ((YEAR(v_toDate) - YEAR(v_fromDate)) * 12);
+		END IF;
+    END IF;
+	IF(v_day > 0) THEN
+		SET v_closedDays = huddil.getClosedDays(DATE_SUB(v_toDate, INTERVAL (v_day - 1) DAY), v_toDate, p_fId);
+		SET v_day = v_day - v_closedDays;
+	END IF;
+    SELECT DATE_ADD(p_fromDateTime, INTERVAL 1 SECOND), DATE_SUB(p_toDateTime, INTERVAL 1 SECOND) INTO p_fromDateTime, p_toDateTime;
     SET v_startWeekDay = DAYOFWEEK(p_fromDateTime);
     SET v_endWeekDay = DAYOFWEEK(p_toDateTime);
-
-	IF(v_costPerHour = 0 AND v_costPerDay = 0 AND v_costPerMonth = 0) THEN
-		SET p_result = 17;
-    ELSEIF(p_fromDateTime < NOW() OR p_toDateTime < NOW()) THEN
+    
+    IF(p_fromDateTime < NOW() OR p_toDateTime < NOW()) THEN
 		SET p_result = -1;
     ELSEIF(p_fromDateTime > p_toDateTime) THEN
 		SET p_result = 0;
@@ -1779,109 +1798,53 @@ BEGIN
 			SET p_result = 11;
 		END IF;
 	END IF;
-    IF(p_result = 9 || p_result = 11) THEN
-		IF(v_costPerMonth = 0 AND v_costPerDay = 0) THEN
-			CALL huddil.getTotalWorkingHours(DATE_SUB(p_fromDateTime, INTERVAL 1 SECOND), DATE_ADD(p_toDateTime, INTERVAL 1 SECOND), p_fId, v_hour, v_minute);
-        ELSE
-			SET v_nextDate = v_fromDate;
-            SET v_hour = 0;
-			SELECT DATEDIFF(v_toDate, v_fromDate) + 1 INTO v_day;
-			IF(v_costPerMonth <> 0) THEN
-				SET v_month = 0;
-				WHILE DATEDIFF(v_toDate, v_nextDate) > 0 DO
-					IF(DAY(LAST_DAY(v_nextDate)) <= v_day) THEN
-						SET v_day = v_day - DAY(LAST_DAY(v_nextDate));
-						SET v_month = v_month + 1;
-					END IF;
-					SET v_nextDate = DATE_ADD(v_nextDate, INTERVAL 1 MONTH);
-				END WHILE;
-			END IF;
-            IF((v_day > 0 AND v_costPerDay = 0) OR (v_fromDate = v_toDate)) THEN
-				IF(v_fromDate <> v_toDate AND v_day > 2) THEN
-					SET v_fromDateTime = DATE_SUB(p_toDateTime, INTERVAL (v_day - 1) DAY);
-					SELECT openingTime INTO v_fromTime FROM facility_timing WHERE facilityId = p_fId AND weekDay = DAYOFWEEK(v_fromDateTime);
-					SET v_fromDateTime = CONCAT(CAST(v_fromDateTime AS DATE), ' ',v_fromTime);
-				ELSE
-					SET v_fromDateTime = DATE_SUB(p_fromDateTime, INTERVAL 1 SECOND);
-                END IF;
-				CALL huddil.getTotalWorkingHours(v_fromDateTime, DATE_ADD(p_toDateTime, INTERVAL 1 SECOND), p_fId, v_hour, v_minute);
-                IF(v_minute <> 0) THEN
-					SET v_hour = v_hour + 1; 
-                END IF;
-                SET v_day = 0;
-            END IF;
-			IF(v_day > 0) THEN
-				SET v_closedDays = huddil.getClosedDays(DATE_SUB(v_toDate, INTERVAL (v_day - 1) DAY), v_toDate, p_fId);
-				SET v_day = v_day - v_closedDays;
-			END IF;
-		END IF;
-    END IF;
     IF(p_result = 9) THEN
 		IF(v_fromDate = v_toDate) THEN
 			SET p_cost = v_costPerDay * p_capacity;
-		ELSE
-			IF(v_costPerMonth = 0) THEN
+		ELSE			
+            IF(v_month <> 0) THEN
 				SET p_cost = v_day * v_costPerDay;
-            ELSE
-				IF(v_month <> 0) THEN
-					SET p_cost = v_day * v_costPerDay;
-					IF(p_cost > v_costPerMonth) THEN
-						SET p_cost = (v_month + 1) * v_costPerMonth;
-					ELSE
-						SET p_cost = p_cost + (v_month * v_costPerMonth);
-					END IF;
+				IF(p_cost > v_costPerMonth) THEN
+					SET p_cost = (v_month + 1) * v_costPerMonth;
 				ELSE
-					SET p_cost = v_day * v_costPerDay;
-					IF(p_cost > v_costPerMonth) THEN
-						SET p_cost = v_costPerMonth;
-					END IF;
+					SET p_cost = p_cost + (v_month * v_costPerMonth);
 				END IF;
+			ELSE
+				SET p_cost = v_day * v_costPerDay;
+                IF(p_cost > v_costPerMonth) THEN
+					SET p_cost = v_costPerMonth;
+                END IF;
             END IF;
             SET p_cost = p_cost * p_capacity;
 		END IF;
     ELSEIF(p_result = 11) THEN
-		IF(v_costPerMonth = 0 AND v_costPerDay = 0) THEN
-			SET p_cost = v_hour * v_costPerHour;
-        ELSE
-			IF(v_fromDate = v_toDate) THEN
-				IF(v_costPerHour = v_costPerDay AND v_costPerDay = v_costPerMonth) THEN
-					SET p_cost = v_costPerMonth;
-                ELSE
-					IF(v_fromTime = v_toTime AND v_fromTime = 0) THEN
-						SET p_cost = v_costPerDay;
-					ELSE
-						IF(v_minute > 0) THEN
-							SET v_hour = v_hour + 1;
-						END IF;
-						SET p_cost = v_hour * v_costPerHour;
-						IF(p_cost > v_costPerDay AND v_costPerDay <> 0) THEN
-							SET p_cost = v_costPerDay;
-						END IF;
-					END IF;
-				END IF;
+		IF(v_fromDate = v_toDate) THEN
+			IF(v_fromTime = v_toTime AND v_fromTime = 0) THEN
+				SET p_cost = v_costPerDay;
 			ELSE
-				IF(v_costPerMonth = 0) THEN
-					SET p_cost = v_day * v_costPerDay;
-				ELSE
-					IF(v_month <> 0) THEN
-						SET p_cost = v_day * v_costPerDay;
-						IF(p_cost > v_costPerMonth) THEN
-							SET p_cost = (v_month + 1) * v_costPerMonth;
-						ELSE
-							SET p_cost = p_cost + (v_month * v_costPerMonth);
-						END IF;
-					ELSE
-						SET p_cost = v_day * v_costPerDay;
-						IF(p_cost > v_costPerMonth) THEN
-							SET p_cost = v_costPerMonth;
-						END IF;
-					END IF;
-				END IF;
-                IF(v_costPerDay = 0 AND v_hour <> 0 AND v_costPerHour <> 0) THEN
-					SET p_cost = p_cost + (v_hour * v_costPerHour);
+				IF(v_minute > 0) THEN
+					SET v_hour = v_hour + 1;
+                END IF;
+				SET p_cost = v_hour * v_costPerHour;
+                IF(p_cost > v_costPerDay) THEN
+					SET p_cost = v_costPerDay;
                 END IF;
 			END IF;
-        END IF;
+		ELSE
+            IF(v_month <> 0) THEN
+				SET p_cost = v_day * v_costPerDay;
+                IF(p_cost > v_costPerMonth) THEN
+					SET p_cost = (v_month + 1) * v_costPerMonth;
+				ELSE
+					SET p_cost = p_cost + (v_month * v_costPerMonth);
+                END IF;
+			ELSE
+				SET p_cost = v_day * v_costPerDay;
+                IF(p_cost > v_costPerMonth) THEN
+					SET p_cost = v_costPerMonth;
+                END IF;
+            END IF;            
+		END IF;
     END IF;
     IF(v_userType = (SELECT id FROM user_type WHERE name = 'service provider')) THEN
 		SET p_cost = 0;
@@ -1927,16 +1890,14 @@ BEGIN
     IF(p_book <> 0 AND (SELECT typeName FROM facility WHERE id = p_fId) = 'Co-Working Space' AND v_userType <> (SELECT id FROM user_type WHERE name = 'service provider')) THEN
 		UPDATE booking SET status = 1 WHERE id = p_book;
     END IF;
-    IF(p_result = 9 || p_result = 11 || p_result = 14) THEN
-		SELECT f.title, f.typeName, f.cityName, f.localityName, l.address, 
-			s.displayName AS spName, s.emailId AS spEmailId, s.mobileNo AS spMobileNo, s.mobileNoVerified AS spMobileVerified,
-			IF(c.displayName IS NULL, '', c.displayName) AS cName, IF(c.emailId IS NULL, '', c.emailId) AS cEmailId, IF(c.mobileNo IS NULL, '', c.mobileNo) AS cMobileNo, IF(c.mobileNoVerified IS NULL, false, true) AS cMobileVerified
-		FROM facility f 
-		JOIN location l ON f.locationId = l.id
-		JOIN user_pref s ON s.userId = f.spUserId
-		LEFT JOIN user_pref c ON c.userId = v_userId
-		WHERE f.id = p_fId;
-	END IF;
+	SELECT f.title, f.typeName, f.cityName, f.localityName, l.address, 
+		s.displayName AS spName, s.emailId AS spEmailId, s.mobileNo AS spMobileNo, s.mobileNoVerified AS spMobileVerified,
+		IF(c.displayName IS NULL, '', c.displayName) AS cName, IF(c.emailId IS NULL, '', c.emailId) AS cEmailId, IF(c.mobileNo IS NULL, '', c.mobileNo) AS cMobileNo, IF(c.mobileNoVerified IS NULL, false, true) AS cMobileVerified
+	FROM facility f 
+	JOIN location l ON f.locationId = l.id
+	JOIN user_pref s ON s.userId = f.spUserId
+	LEFT JOIN user_pref c ON c.userId = v_userId
+	WHERE f.id = p_fId;
     SET p_cost = TRUNCATE(p_cost, 2);
     SET p_cgst = TRUNCATE(p_cgst, 2);
     SET p_sgst = TRUNCATE(p_sgst, 2);
@@ -2247,69 +2208,6 @@ DELIMITER ;
 /*!50003 SET character_set_client  = @saved_cs_client */ ;
 /*!50003 SET character_set_results = @saved_cs_results */ ;
 /*!50003 SET collation_connection  = @saved_col_connection */ ;
-/*!50003 DROP PROCEDURE IF EXISTS `getBlockedTimings` */;
-/*!50003 SET @saved_cs_client      = @@character_set_client */ ;
-/*!50003 SET @saved_cs_results     = @@character_set_results */ ;
-/*!50003 SET @saved_col_connection = @@collation_connection */ ;
-/*!50003 SET character_set_client  = utf8 */ ;
-/*!50003 SET character_set_results = utf8 */ ;
-/*!50003 SET collation_connection  = utf8_general_ci */ ;
-/*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
-/*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION' */ ;
-DELIMITER ;;
-CREATE DEFINER=`root`@`localhost` PROCEDURE `getBlockedTimings`(IN p_sessionId VARCHAR(128), IN p_status INT, IN p_fId INT, 
-IN p_pageNo INT, INOUT p_count INT)
-BEGIN
-
-	DECLARE v_userType INT;
-    DECLARE v_userId INT;
-    DECLARE v_lowerBound INT;
-    DECLARE v_totalRecords INT;
-    
-    SET v_totalRecords = 0;
-	SET v_lowerBound = (P_pageNo - 1) * p_count;
-    
-	SELECT p.userType, p.userId INTO v_userType, v_userId FROM huddil.user_pref p WHERE p.sessionId = p_sessionId;
-    
-    IF(v_userId IS NULL) THEN
-		SET p_count = -1;
-    ELSEIF(v_userType <> (SELECT id FROM user_type WHERE name = 'Service Provider')) THEN
-		SET p_count = -2;
-	ELSE
-		IF(p_status = 0) THEN
-			SELECT DISTINCT b.id AS bookingId, b.fromTime AS bookedFrom, b.toTime AS bookedTo, b.bookedTime, b.totalPrice, '' AS paymentMethod, 
-            b.status, '' AS title, '' AS typeName, '' AS name, '' AS address, '' AS displayName, '' AS emailId, '' AS mobileNo, b.seats 
-            FROM huddil.booking b 
-            JOIN huddil.facility f ON f.id = b.facilityId 
-            JOIN huddil.user_pref p ON p.userId = f.spUserId AND b.userId = f.spUserId
-            WHERE p.sessionId = p_sessionId AND f.id = p_fId LIMIT v_lowerBound, p_count;
-            IF(p_pageNo = 1) THEN
-				SELECT COUNT(DISTINCT b.id) INTO p_count FROM huddil.booking b 
-				JOIN huddil.facility f ON f.id = b.facilityId 
-				JOIN huddil.user_pref p ON p.userId = f.spUserId AND b.userId = f.spUserId
-				WHERE p.sessionId = p_sessionId AND f.id = p_fId;
-            END IF;
-		ELSEIF(p_status = 1) THEN
-			SELECT DISTINCT b.id AS bookingId, b.fromDateTime AS bookedFrom, b.toDateTime AS bookedTo, b.bookedTime, b.price, '' AS paymentMethod, 
-            5 AS status, '' AS title, '' AS typeName, '' AS name, '' AS address, '' AS displayName, '' AS emailId, '' AS mobileNo, b.seats 
-            FROM huddil.booking_history b 
-            JOIN huddil.facility f ON f.id = b.facilityId 
-            JOIN huddil.user_pref p ON p.userId = f.spUserId AND b.userId = f.spUserId
-            WHERE p.sessionId = p_sessionId AND f.id = p_fId LIMIT v_lowerBound, p_count;
-            IF(p_pageNo = 1) THEN
-				SELECT COUNT(DISTINCT b.id) INTO p_count FROM huddil.booking_history b 
-				JOIN huddil.facility f ON f.id = b.facilityId 
-				JOIN huddil.user_pref p ON p.userId = f.spUserId AND b.userId = f.spUserId
-                WHERE p.sessionId = p_sessionId AND f.id = p_fId LIMIT v_lowerBound, p_count;
-            END If;
-        END IF;
-    END IF;
-END ;;
-DELIMITER ;
-/*!50003 SET sql_mode              = @saved_sql_mode */ ;
-/*!50003 SET character_set_client  = @saved_cs_client */ ;
-/*!50003 SET character_set_results = @saved_cs_results */ ;
-/*!50003 SET collation_connection  = @saved_col_connection */ ;
 /*!50003 DROP PROCEDURE IF EXISTS `getBookingAndCancellation` */;
 /*!50003 SET @saved_cs_client      = @@character_set_client */ ;
 /*!50003 SET @saved_cs_results     = @@character_set_results */ ;
@@ -2339,11 +2237,11 @@ BEGIN
 	ELSEIF(v_userType != 6 AND v_userType !=7)THEN
         SET v_count = -2;
 	ELSE
-   		SET @queryBooking = "SELECT DISTINCT b.id as bookingId, b.fromTime as bookedFrom, b.toTime as bookedTo, b.bookedTime, b.approvedTime, b.totalPrice, IF(b.paymentMethod = 'offline', 'Offline', 'Online') AS paymentMethod, b.status, f.title, f.typeName, lo.name, lo.address, p.displayName, p.emailId, p.mobileNo, b.seats FROM huddil.booking b JOIN huddil.facility f ON f.id = b.facilityId JOIN huddil.city c ON c.name = f.cityName JOIN huddil.locality l ON l.name = f.localityName JOIN huddil.location lo ON lo.id = f.locationId JOIN huddil.facility_type t ON t.name = f.typeName";
+   		SET @queryBooking = "SELECT DISTINCT b.id as bookingId, b.fromTime as bookedFrom, b.toTime as bookedTo, b.bookedTime, b.totalPrice, IF(b.paymentMethod = 'offline', 'Offline', 'Online') AS paymentMethod, b.status, f.title, f.typeName, lo.name, lo.address, p.displayName, p.emailId, p.mobileNo, b.seats FROM huddil.booking b JOIN huddil.facility f ON f.id = b.facilityId JOIN huddil.city c ON c.name = f.cityName JOIN huddil.locality l ON l.name = f.localityName JOIN huddil.location lo ON lo.id = f.locationId JOIN huddil.facility_type t ON t.name = f.typeName";
 		SET @queryBookingCount = "SELECT COUNT(DISTINCT b.id) AS count FROM huddil.booking b JOIN huddil.facility f ON f.id = b.facilityId JOIN huddil.city c ON c.name = f.cityName JOIN huddil.locality l ON l.name = f.localityName JOIN huddil.location lo ON lo.id = f.locationId JOIN huddil.facility_type t ON t.name = f.typeName";
-		SET @queryCancellation = "SELECT DISTINCT b.bookingId, b.bookedFrom, b.bookedTo, b.bookedTime, b.approvedTime, b.totalPrice, IF(b.paymentMethod = 'offline', 'Offline', 'Online') AS paymentMethod, IF(b.bookedStatus = 4, 4, 2) as status, f.title, f.typeName, lo.name, lo.address, p.displayName, p.emailId, p.mobileNo, b.seats FROM huddil.cancellation b JOIN huddil.facility f ON f.id = b.facilityId JOIN huddil.city c ON c.name = f.cityName JOIN huddil.locality l ON l.name = f.localityName JOIN huddil.location lo ON lo.id = f.locationId JOIN huddil.facility_type t ON t.name = f.typeName";
+		SET @queryCancellation = "SELECT DISTINCT b.bookingId, b.bookedFrom, b.bookedTo, b.bookedTime, b.totalPrice, IF(b.paymentMethod = 'offline', 'Offline', 'Online') AS paymentMethod, IF(b.bookedStatus = 4, 4, 2) as status, f.title, f.typeName, lo.name, lo.address, p.displayName, p.emailId, p.mobileNo, b.seats FROM huddil.cancellation b JOIN huddil.facility f ON f.id = b.facilityId JOIN huddil.city c ON c.name = f.cityName JOIN huddil.locality l ON l.name = f.localityName JOIN huddil.location lo ON lo.id = f.locationId JOIN huddil.facility_type t ON t.name = f.typeName";
 		SET @queryCancellationCount = "SELECT COUNT(DISTINCT b.bookingId) AS count FROM huddil.cancellation b JOIN huddil.facility f ON f.id = b.facilityId JOIN huddil.city c ON c.name = f.cityName JOIN huddil.locality l ON l.name = f.localityName JOIN huddil.location lo ON lo.id = f.locationId JOIN huddil.facility_type t ON t.name = f.typeName";
-		SET @queryCompleted = "SELECT DISTINCT b.bookingId AS id, b.fromDateTime as bookedFrom, b.toDateTime as bookedTo, b.bookedTime, b.approvedTime, b.price, IF(b.paymentMethod = 'offline', 'Offline', 'Online') AS paymentMethod, 5 AS status, f.title, f.typeName, lo.name, lo.address, p.displayName, p.emailId, p.mobileNo, b.seats FROM huddil.booking_history b JOIN huddil.facility f ON f.id = b.facilityId JOIN huddil.city c ON c.name = f.cityName JOIN huddil.locality l ON l.name = f.localityName JOIN huddil.location lo ON lo.id = f.locationId JOIN huddil.facility_type t ON t.name = f.typeName";
+		SET @queryCompleted = "SELECT DISTINCT b.bookingId AS id, b.fromDateTime as bookedFrom, b.toDateTime as bookedTo, b.bookedTime, b.price, IF(b.paymentMethod = 'offline', 'Offline', 'Online') AS paymentMethod, 5 AS status, f.title, f.typeName, lo.name, lo.address, p.displayName, p.emailId, p.mobileNo, b.seats FROM huddil.booking_history b JOIN huddil.facility f ON f.id = b.facilityId JOIN huddil.city c ON c.name = f.cityName JOIN huddil.locality l ON l.name = f.localityName JOIN huddil.location lo ON lo.id = f.locationId JOIN huddil.facility_type t ON t.name = f.typeName";
 		SET @queryCompletedCount = "SELECT COUNT(DISTINCT b.bookingId) AS count FROM huddil.booking_history b JOIN huddil.facility f ON f.id = b.facilityId JOIN huddil.city c ON c.name = f.cityName JOIN huddil.locality l ON l.name = f.localityName JOIN huddil.location lo ON lo.id = f.locationId JOIN huddil.facility_type t ON t.name = f.typeName";
         
 		IF(v_userType = 7)THEN
@@ -2475,19 +2373,19 @@ DELIMITER ;
 /*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
 /*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION' */ ;
 DELIMITER ;;
-CREATE DEFINER=`root`@`localhost` PROCEDURE `getCommissionByAdmin`(IN p_Ids MEDIUMTEXT, IN p_month INT, IN p_year INT)
+CREATE DEFINER=`root`@`localhost` PROCEDURE `getCommissionByAdmin`(IN p_Ids VARCHAR(90), IN p_month INT, IN p_year INT)
 BEGIN
 
-	DECLARE v_month INT;
-	DECLARE v_months MEDIUMTEXT;
-	SET v_month = p_month + 1;
+DECLARE v_month INT;
+DECLARE v_months MEDIUMTEXT;
+SET v_month = p_month + 1;
 
-	SELECT currentMonth.spUserId, currentMonthCommission, IF(nextMonthCommission IS NULL, currentMonthCommission, nextMonthCommission) AS nextMonthCommission FROM
-	(SELECT spuserId, commission*100 as currentMonthCommission FROM huddil.sp_commission 
-	WHERE FIND_IN_SET(p_month, month) AND YEAR = p_year AND FIND_IN_SET(spUserId, p_Ids)) AS currentMonth
-	LEFT JOIN
-	(SELECT spuserId, commission*100 as nextMonthCommission FROM huddil.sp_commission 
-	WHERE FIND_IN_SET(v_month, month) AND YEAR = p_year AND FIND_IN_SET(spUserId, p_Ids)) AS nextMonth ON currentMonth.spuserId = nextMonth.spuserId;
+SELECT currentMonth.spUserId, currentMonthCommission, IF(nextMonthCommission IS NULL, currentMonthCommission, nextMonthCommission) AS nextMonthCommission FROM
+(SELECT spuserId, commission*100 as currentMonthCommission FROM huddil.sp_commission 
+WHERE FIND_IN_SET(p_month, month) AND YEAR = p_year AND FIND_IN_SET(spUserId, p_Ids)) AS currentMonth
+LEFT JOIN
+(SELECT spuserId, commission*100 as nextMonthCommission FROM huddil.sp_commission 
+WHERE FIND_IN_SET(v_month, month) AND YEAR = p_year AND FIND_IN_SET(spUserId, p_Ids)) AS nextMonth ON currentMonth.spuserId = nextMonth.spuserId;
 
 END ;;
 DELIMITER ;
@@ -2584,103 +2482,6 @@ DELIMITER ;
 /*!50003 SET character_set_client  = @saved_cs_client */ ;
 /*!50003 SET character_set_results = @saved_cs_results */ ;
 /*!50003 SET collation_connection  = @saved_col_connection */ ;
-/*!50003 DROP PROCEDURE IF EXISTS `getTotalWorkingHours` */;
-/*!50003 SET @saved_cs_client      = @@character_set_client */ ;
-/*!50003 SET @saved_cs_results     = @@character_set_results */ ;
-/*!50003 SET @saved_col_connection = @@collation_connection */ ;
-/*!50003 SET character_set_client  = utf8 */ ;
-/*!50003 SET character_set_results = utf8 */ ;
-/*!50003 SET collation_connection  = utf8_general_ci */ ;
-/*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
-/*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION' */ ;
-DELIMITER ;;
-CREATE DEFINER=`root`@`localhost` PROCEDURE `getTotalWorkingHours`(IN p_fromDateTime TIMESTAMP, IN p_toDateTime TIMESTAMP, IN p_fId INT, 
-OUT p_hour INT, OUT p_minute INT)
-BEGIN
-	DECLARE v_day INT;
-    DECLARE v_extraFromTime TIME;
-    DECLARE v_extraToTime TIME;
-    DECLARE v_tempHour INT;
-	DECLARE v_tempMinute INT;
-    DECLARE v_fromDate DATE;
-    DECLARE v_toDate DATE;
-	DECLARE v_fromTime TIME;
-    DECLARE v_toTime TIME;
-    
-    SELECT CAST(p_fromDateTime AS TIME), CAST(p_toDateTime AS TIME), CAST(p_fromDateTime AS DATE), 
-		CAST(p_toDateTime AS DATE), DATEDIFF(v_toDate, v_fromDate) + 1 INTO v_fromTime, v_toTime, v_fromDate, v_toDate, v_day;
-
-	IF(v_day > 6) THEN
-		SELECT SUM(TIMESTAMPDIFF(HOUR, openingTime, closingTime)), SUM(TIMESTAMPDIFF(MINUTE, openingTime, closingTime) % 60) 
-			INTO p_hour, p_minute FROM facility_timing WHERE facilityId = p_fId;
-		SET p_minute = p_minute * (v_day DIV 7);
-		SET p_hour = p_hour * (v_day DIV 7);
-		SET v_day = v_day % 7;
-		IF(v_day > 0) THEN
-			call getWorkingHours(p_fId, v_toDate, 0 - (v_day-1), v_tempHour, v_tempMinute);
-			SET p_hour = p_hour + v_tempHour;
-			SET p_minute = p_minute + v_tempMinute;
-		END IF;
-	ELSE
-		call getWorkingHours(p_fId, v_toDate, 0 - (v_day-1), v_tempHour, v_tempMinute);
-		SET p_hour = v_tempHour;
-		SET p_minute = v_tempMinute;
-	END IF;
-	IF(v_toDate <> v_fromDate) THEN
-		SELECT TIMEDIFF(v_fromTime, openingTime) INTO v_extraFromTime FROM facility_timing WHERE facilityId = p_fId AND weekDay = DAYOFWEEK(v_fromDate);
-		SELECT TIMEDIFF(closingTime, v_toTime) INTO v_extraToTime FROM facility_timing WHERE facilityId = p_fId AND weekDay = DAYOFWEEK(v_toDate);
-        SET p_hour = p_hour - (HOUR(v_extraFromTime) + HOUR(v_extraToTime));
-		SET p_minute = p_minute - (MINUTE(v_extraFromTime) + MINUTE(v_extraToTime));
-	ELSE
-	   	SELECT TIMESTAMPDIFF(MINUTE, p_fromDateTime, p_toDateTime) % 60, TIMESTAMPDIFF(HOUR, p_fromDateTime, p_toDateTime) 
-			INTO p_minute, p_hour;
-	END IF;
-	IF(p_minute > 0) THEN
-		SET p_hour = p_hour + (p_minute DIV 60);
-		SET p_minute = p_minute % 60;
-		IF(p_minute <> 0) THEN
-			SET p_hour = p_hour + 1;
-			SET p_minute = 0;
-		END IF;
-	END IF;
-END ;;
-DELIMITER ;
-/*!50003 SET sql_mode              = @saved_sql_mode */ ;
-/*!50003 SET character_set_client  = @saved_cs_client */ ;
-/*!50003 SET character_set_results = @saved_cs_results */ ;
-/*!50003 SET collation_connection  = @saved_col_connection */ ;
-/*!50003 DROP PROCEDURE IF EXISTS `getWorkingHours` */;
-/*!50003 SET @saved_cs_client      = @@character_set_client */ ;
-/*!50003 SET @saved_cs_results     = @@character_set_results */ ;
-/*!50003 SET @saved_col_connection = @@collation_connection */ ;
-/*!50003 SET character_set_client  = utf8 */ ;
-/*!50003 SET character_set_results = utf8 */ ;
-/*!50003 SET collation_connection  = utf8_general_ci */ ;
-/*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
-/*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION' */ ;
-DELIMITER ;;
-CREATE DEFINER=`root`@`localhost` PROCEDURE `getWorkingHours`(IN p_fId INT, IN p_endDay DATE, IN p_days INT, OUT p_hour INT, OUT p_minute INT)
-BEGIN
-	DECLARE v_nextDay DATE;
-    DECLARE v_hour INT;
-    DECLARE v_minute INT;
-	
-    SET p_hour = 0;
-    SET p_minute = 0;
-    SET v_nextDay = DATE_ADD(p_endDay, INTERVAL p_days DAY);
-    WHILE v_nextDay <= p_endDay DO
-		SELECT TIMESTAMPDIFF(HOUR, openingTime, closingTime), TIMESTAMPDIFF(MINUTE, openingTime, closingTime) % 60 INTO v_hour, v_minute
-			FROM facility_timing WHERE facilityId = p_fId AND weekDay = DAYOFWEEK(v_nextDay);
-		SET p_hour = p_hour + v_hour;
-        SET p_minute = p_minute + v_minute;
-        SET v_nextDay = DATE_ADD(v_nextDay, INTERVAL 1 DAY);
-	END WHILE;
-END ;;
-DELIMITER ;
-/*!50003 SET sql_mode              = @saved_sql_mode */ ;
-/*!50003 SET character_set_client  = @saved_cs_client */ ;
-/*!50003 SET character_set_results = @saved_cs_results */ ;
-/*!50003 SET collation_connection  = @saved_col_connection */ ;
 /*!50003 DROP PROCEDURE IF EXISTS `moveBookingData` */;
 /*!50003 SET @saved_cs_client      = @@character_set_client */ ;
 /*!50003 SET @saved_cs_results     = @@character_set_results */ ;
@@ -2697,8 +2498,8 @@ BEGIN
 	DELETE FROM booking WHERE status = 0 AND TIMESTAMPDIFF(MINUTE, bookedTime, NOW()) > 7;
 	SELECT GROUP_CONCAT(id) INTO p_bookingId FROM booking WHERE TIMESTAMPDIFF(MINUTE, NOW(), toTime) < 6;
 	INSERT INTO `huddil`.`booking_history`
-		(`fromDateTime`, `toDateTime`, `bookedTime`, `price`, `paymentMethod`, `userId`, `facilityId`, `bookingId`, `paymentId`, `seats`, `approvedTime`)
-		SELECT fromTime, toTime, bookedTime, totalPrice, paymentMethod, userId, facilityId, id, paymentId, seats, approvedTime FROM booking WHERE FIND_IN_SET(id, p_bookingId);
+		(`fromDateTime`, `toDateTime`, `bookedTime`, `price`, `paymentMethod`, `userId`, `facilityId`, `bookingId`, `paymentId`, `seats`)
+		SELECT fromTime, toTime, bookedTime, totalPrice, paymentMethod, userId, facilityId, id, paymentId, seats FROM booking WHERE FIND_IN_SET(id, p_bookingId);
 	DELETE FROM booking WHERE FIND_IN_SET(id, p_bookingId);
 END ;;
 DELIMITER ;
@@ -3286,10 +3087,9 @@ BEGIN
 					SELECT totalPrice INTO p_refund FROM booking WHERE id = p_bookingId;
 				END IF;
 				IF(p_result = 11 OR p_result = 13) THEN
-					INSERT INTO `huddil`.`cancellation` (`bookedFrom`, `bookedTo`, `bookedTime`, `seats`, `price`, `totalPrice`, `refundAmount`, `paymentId`, `paymentMethod`, `cancellationPolicyId`, `facilityId`, 
-						`bookedUserId`, `cancelledUserId`, `bookingId`, `bookedStatus`, `approvedTime`)
-					SELECT fromTime, toTime, bookedTime, seats, price, totalPrice, TRUNCATE(p_refund, 2), paymentId, paymentMethod, cancellationPolicyId, facilityId, userId, v_userId, id, status, 
-						approvedTime FROM booking WHERE id = p_bookingId;
+					INSERT INTO `huddil`.`cancellation`
+					(`bookedFrom`, `bookedTo`, `bookedTime`, `seats`, `price`, `totalPrice`, `refundAmount`, `paymentId`, `paymentMethod`, `cancellationPolicyId`, `facilityId`, `bookedUserId`, `cancelledUserId`, `bookingId`, `bookedStatus`)
+					SELECT fromTime, toTime, bookedTime, seats, price, totalPrice, TRUNCATE(p_refund, 2), paymentId, paymentMethod, cancellationPolicyId, facilityId, userId, v_userId, id, status FROM booking WHERE id = p_bookingId;
                     IF((SELECT typeName from facility WHERE id = v_facilityTd) = 'Co-Working Space' AND v_userType = v_spTypeId) THEN 
 						UPDATE cancellation SET bookedStatus = 4 WHERE bookingId = p_bookingId;
                     END IF;
@@ -3346,8 +3146,8 @@ BEGIN
 					SET p_result = 18;
 					SELECT SUM(totalPrice) INTO p_totalPrice FROM booking WHERE FIND_IN_SET(id, v_bookingIds);
 					INSERT INTO `huddil`.`cancellation`
-						(`bookedFrom`, `bookedTo`, `bookedTime`, `seats`, `price`, `totalPrice`, `refundAmount`, `paymentId`, `paymentMethod`, `cancellationPolicyId`, `facilityId`, `bookedUserId`, `cancelledUserId`, `bookingId`, `bookedStatus`, `approvedTime`)
-							SELECT fromTime, toTime, bookedTime, seats, price, totalPrice, totalPrice, paymentId, paymentMethod, cancellationPolicyId, facilityId, userId, v_userId, id, status, approvedTime FROM booking WHERE FIND_IN_SET(id, v_bookingIds);
+						(`bookedFrom`, `bookedTo`, `bookedTime`, `seats`, `price`, `totalPrice`, `refundAmount`, `paymentId`, `paymentMethod`, `cancellationPolicyId`, `facilityId`, `bookedUserId`, `cancelledUserId`, `bookingId`, `bookedStatus`)
+							SELECT fromTime, toTime, bookedTime, seats, price, totalPrice, totalPrice, paymentId, paymentMethod, cancellationPolicyId, facilityId, userId, v_userId, id, status FROM booking WHERE FIND_IN_SET(id, v_bookingIds);
 					IF((SELECT typeName from facility WHERE id = p_facilityId) = 'Co-Working Space') THEN 
 						UPDATE cancellation SET bookedStatus = 4 WHERE FIND_IN_SET(bookingId, v_bookingIds);
                     END IF;
@@ -3379,8 +3179,8 @@ BEGIN
             END IF;
 		ELSEIF(p_type = 4) THEN
 			INSERT INTO `huddil`.`booking`
-			(`id`, `fromTime`, `toTime`, `seats`, `price`, `totalPrice`, `cancellationPolicyId`, `paymentMethod`, `paymentId`, `userId`, `facilityId`, `bookedTime`, `status`, `approvedTime`)
-				SELECT bookingId, bookedFrom, bookedTo, seats, price, totalPrice, cancellationPolicyId, paymentMethod, paymentId, bookedUserId, facilityId, bookedTime, bookedStatus, approvedTime FROM cancellation WHERE bookingId = p_bookingId;
+			(`id`, `fromTime`, `toTime`, `seats`, `price`, `totalPrice`, `cancellationPolicyId`, `paymentMethod`, `paymentId`, `userId`, `facilityId`, `bookedTime`, `status`)
+				SELECT bookingId, bookedFrom, bookedTo, seats, price, totalPrice, cancellationPolicyId, paymentMethod, paymentId, bookedUserId, facilityId, bookedTime, bookedStatus FROM cancellation WHERE bookingId = p_bookingId;
 			UPDATE booking SET status = 1 WHERE id = p_bookingId;
             DELETE FROM cancellation WHERE bookingId = p_bookingId;
 			SET p_result = 19;
@@ -3425,26 +3225,23 @@ BEGIN
 	SELECT id INTO v_verificationRejected FROM status WHERE name = 'Reject Verify Request';
 
 	IF(populate = TRUE) THEN
-		UPDATE least_cost SET cost = 
-			(SELECT costPerDay FROM facility f
+		DELETE FROM least_cost;
+		INSERT INTO `huddil`.`least_cost`(`id`, `typeName`, `cost`)
+			SELECT t.id, typeName, costPerMonth FROM facility f
 				JOIN facility_type t ON f.typeName = t.name AND t.id = 1 AND (
-                f.status = v_approverd OR f.status = v_verified OR f.status = v_pendingVerification OR f.status = v_verificationRejected) 
-                AND costPerDay <> 0 ORDER BY costPerDay LIMIT 0, 1) WHERE id = 1;
-		UPDATE least_cost SET cost = 
-			(SELECT costPerDay FROM facility f
+                f.status = v_approverd OR f.status = v_verified OR f.status = v_pendingVerification OR f.status = v_verificationRejected) ORDER BY costPerMonth LIMIT 0, 1;
+		INSERT INTO `huddil`.`least_cost`(`id`, `typeName`, `cost`)
+			SELECT t.id, typeName, costPerMonth FROM facility f
 				JOIN facility_type t ON f.typeName = t.name AND t.id = 2 AND (
-                f.status = v_approverd OR f.status = v_verified OR f.status = v_pendingVerification OR f.status = v_verificationRejected) 
-                AND costPerDay <> 0 ORDER BY costPerDay LIMIT 0, 1) WHERE id = 2;
-		UPDATE least_cost SET cost = 
-			(SELECT costPerDay FROM facility f
+                f.status = v_approverd OR f.status = v_verified OR f.status = v_pendingVerification OR f.status = v_verificationRejected) ORDER BY costPerMonth LIMIT 0, 1;
+		INSERT INTO `huddil`.`least_cost`(`id`, `typeName`, `cost`)
+			SELECT t.id, typeName, costPerMonth FROM facility f
 				JOIN facility_type t ON f.typeName = t.name AND t.id = 3 AND (
-                f.status = v_approverd OR f.status = v_verified OR f.status = v_pendingVerification OR f.status = v_verificationRejected) 
-                AND costPerDay <> 0 ORDER BY costPerDay LIMIT 0, 1) WHERE id = 3;
-		UPDATE least_cost SET cost = 
-			(SELECT costPerDay FROM facility f
+                f.status = v_approverd OR f.status = v_verified OR f.status = v_pendingVerification OR f.status = v_verificationRejected) ORDER BY costPerMonth LIMIT 0, 1;
+		INSERT INTO `huddil`.`least_cost`(`id`, `typeName`, `cost`)
+			SELECT t.id, typeName, costPerMonth FROM facility f
 				JOIN facility_type t ON f.typeName = t.name AND t.id = 4 AND (
-                f.status = v_approverd OR f.status = v_verified OR f.status = v_pendingVerification OR f.status = v_verificationRejected) 
-                AND costPerDay <> 0 ORDER BY costPerDay LIMIT 0, 1) WHERE id = 4;
+                f.status = v_approverd OR f.status = v_verified OR f.status = v_pendingVerification OR f.status = v_verificationRejected) ORDER BY costPerMonth LIMIT 0, 1;
 	ELSE
 		SELECT * FROM least_cost;
 	END IF;
@@ -3521,10 +3318,10 @@ DELIMITER ;
 DELIMITER ;;
 CREATE DEFINER=`root`@`localhost` PROCEDURE `showAvailableFacilities`(IN v_sessionId VARCHAR(100),IN v_operation INT, IN v_fromDateTime TIMESTAMP, 
 IN v_toDateTime TIMESTAMP, IN v_minCost DOUBLE, IN v_maxCost DOUBLE, IN v_maxCapacity INT, IN v_typeId INT, IN v_cityId INT, IN v_localityId INT, 
-IN v_offers INT, IN v_amenity VARCHAR(50), IN v_pageNo INT, IN v_sortBy INT, IN v_orderBy INT, INOUT v_counting INT, OUT v_result INT)
+IN v_offers INT, IN v_amenity VARCHAR(50), IN v_pageNo INT, INOUT v_counting INT, OUT v_result INT)
 BEGIN
     
-/*v_operation = 1 -> Show Available Facilities for Consumer*/
+ /*v_operation = 1 -> Show Available Facilities for Consumer*/
 /*v_operation = 2 -> Show all Facilities of SP*/
 /*v_operation = 3 -> Getting Favorite Facilities of Consumer*/
 /*v_operation = 4 -> Getting All the Facilities For Advisor*/
@@ -3535,13 +3332,7 @@ DECLARE v_lowerBound INT;
 DECLARE v_count INT;
 DECLARE v_totalRecords INT;
 DECLARE v_minCapacity INT;
-DECLARE v_userType INT;
-DECLARE v_fromTime TIME;
-DECLARE v_toTime TIME;
-DECLARE v_fromDay INT;
-DECLARE v_toDay INT;
-DECLARE v_Ids MEDIUMTEXT;
-
+	DECLARE v_userType INT;
 SET v_totalRecords = 0;
 SET v_result = 0;
 SET v_lowerBound = (v_pageNo - 1) * v_counting;
@@ -3549,10 +3340,12 @@ SET v_lowerBound = (v_pageNo - 1) * v_counting;
 SET v_minCapacity = v_maxCapacity;
 SET v_maxCapacity = v_minCapacity * 1.5;
 
+
 SELECT userType INTO v_userType FROM user_pref WHERE sessionId = v_sessionId;
     IF(v_operation <> 1 AND v_userType IS NULL) THEN
 		SET v_result = -1;
 	ELSEIF(v_operation = 1)THEN
+
 SELECT DATE_ADD(v_fromDateTime, INTERVAL 1 SECOND), DATE_SUB(v_toDateTime, INTERVAL 1 SECOND) INTO p_fromDateTime, p_toDateTime;
 
 	SET @queryOne = "SELECT COUNT(DISTINCT f.id) INTO @v_totalRecords FROM huddil.facility f JOIN huddil.city c ON c.name = f.cityName JOIN huddil.locality l on l.name = f.localityName JOIN huddil.location lo on lo.id = f.locationId JOIN huddil.facility_type t ON t.name = f.typeName JOIN huddil.facility_photo p ON p.facilityId = f.id JOIN huddil.facility_amenity a ON a.facilityId = f.id _join";
@@ -3602,9 +3395,6 @@ SELECT DATE_ADD(v_fromDateTime, INTERVAL 1 SECOND), DATE_SUB(v_toDateTime, INTER
     
 		SET @queryOne = CONCAT(@queryOne, ' AND f.costPerDay BETWEEN v_minCost AND v_maxCost');
 		SET @query = CONCAT(@query, ' AND f.costPerDay BETWEEN v_minCost AND v_maxCost');
-	ELSEIF(v_minCost != 0) THEN
-		SET @queryOne = CONCAT(@queryOne, ' AND f.costPerDay > v_minCost');
-		SET @query = CONCAT(@query, ' AND f.costPerDay > v_minCost');
 	END IF;
     
     IF(v_typeId !=0)THEN
@@ -3615,41 +3405,9 @@ SELECT DATE_ADD(v_fromDateTime, INTERVAL 1 SECOND), DATE_SUB(v_toDateTime, INTER
     END IF;
     
     SET @queryOne = CONCAT(@queryOne, ' AND (f.status = 7 OR f.status = 8 OR f.status = 5)');
-    SET @query = CONCAT(@query, ' AND (f.status = 7 OR f.status = 8 OR f.status = 5) GROUP by f.id order by condition LIMIT v_lowerBound, v_counting');
-	
-    IF(p_fromDateTime !=  '1970-11-01 00:00:02' && p_toDateTime != '1970-11-01 00:00:00')THEN
-		
-		SELECT TIME(v_fromDateTime), TIME(v_toDateTime) INTO v_fromTime, v_toTime;
-		SELECT DAYOFWEEK(v_fromDateTime) INTO v_fromDay;
-		SELECT DAYOFWEEK(v_toDateTime) INTO v_toDay;
-				
-        IF(v_fromDay = v_toDay)THEN
-			
-			SELECT GROUP_CONCAT(facilityId) INTO v_Ids FROM facility_timing t WHERE (t.closingTime >= v_toTime AND t.openingTime <= v_fromTime AND t.weekDay IN(v_fromDay));
-            IF(v_Ids IS NULL) THEN
-				SET v_Ids = 0;
-			END IF;
-			
-
-		ELSE
-			SELECT DISTINCT GROUP_CONCAT(facilityId) INTO v_Ids FROM (
-				SELECT t.facilityId FROM facility_timing t WHERE 
-				(t.openingTime <= v_fromTime AND t.closingTime >= v_fromTime AND t.weekDay IN (v_fromDay))) AS t1
-				INNER JOIN (
-				SELECT t.facilityId FROM facility_timing t WHERE
-				(t.closingTime >= v_toTime AND t.openingTime <= v_toTime AND t.weekDay IN (v_toDay))) AS t2 USING(facilityId);
-		END IF;	
-        IF(v_Ids IS NOT NULL) THEN
-			SET @query = REPLACE(@query, ' GROUP by f.id order by condition LIMIT v_lowerBound, v_counting', '');
-			SET @query = CONCAT(@query, ' AND f.id IN (v_Ids) GROUP by f.id order by condition LIMIT v_lowerBound, v_counting');
-			SET @queryOne = CONCAT(@queryOne, ' AND f.id IN (v_Ids)');
-			SET @query = REPLACE(@query, 'v_Ids', v_Ids);
-			SET @queryOne = REPLACE(@queryOne, 'v_Ids', v_Ids);
-		END IF;
-	END IF;
+    SET @query = CONCAT(@query, ' AND (f.status = 7 OR f.status = 8 OR f.status = 5) GROUP by f.id order by f.averageRating desc LIMIT v_lowerBound, v_counting');
     
-		
-    IF(p_fromDateTime <> '' && p_toDateTime <> '')THEN
+	IF(p_fromDateTime <> '' && p_toDateTime <> '')THEN
 		
         SET @queryOne = REPLACE(@queryOne, 'p_fromDateTime', p_fromDateTime);
         SET @queryOne = REPLACE(@queryOne, 'p_toDateTime', p_toDateTime);
@@ -3657,7 +3415,6 @@ SELECT DATE_ADD(v_fromDateTime, INTERVAL 1 SECOND), DATE_SUB(v_toDateTime, INTER
 		SET @query = REPLACE(@query, 'p_fromDateTime', p_fromDateTime);
 		SET @query = REPLACE(@query, 'p_toDateTime', p_toDateTime);
 	END IF;
-	
     IF(v_maxCost != 0)THEN
     
 		SET @queryOne = REPLACE(@queryOne, 'v_minCost', v_minCost);
@@ -3665,41 +3422,8 @@ SELECT DATE_ADD(v_fromDateTime, INTERVAL 1 SECOND), DATE_SUB(v_toDateTime, INTER
         
 		SET @query = REPLACE(@query, 'v_minCost', v_minCost);
 		SET @query = REPLACE(@query, 'v_maxCost', v_maxCost);
-	ELSEIF(v_minCost != 0) THEN
-		SET @queryOne = REPLACE(@queryOne, 'v_minCost', v_minCost);
-		SET @query = REPLACE(@query, 'v_minCost', v_minCost);
 	END IF;
-    
-    
-	IF(v_sortBy = 0 && v_orderBy = 1) THEN
-	  	 SET @query = REPLACE(@query, 'order by condition', 'order by f.averageRating asc');
-	  ELSEIF(v_sortBy = 0 && v_orderBy = 0)THEN
-	  	 SET @query = REPLACE(@query, 'order by condition', 'order by f.averageRating desc');
-	END IF;
-    
-    IF(v_sortBy = 1 && v_orderBy = 1) THEN
-       		SET @query = REPLACE(@query, 'GROUP by f.id order by condition', 'AND f.costPerHour !=0 GROUP by f.id order by f.costPerHour asc, f.averageRating desc');
-            SET @queryOne = CONCAT(@queryOne, ' AND f.costPerHour !=0');
-		ELSEIF(v_sortBy = 2 && v_orderBy = 1)THEN
-	   		SET @query = REPLACE(@query, 'GROUP by f.id order by condition', 'AND f.costPerDay !=0 GROUP by f.id order by f.costPerDay asc, f.averageRating desc');
-            SET @queryOne = CONCAT(@queryOne, ' AND f.costPerDay !=0');
-		ELSEIF(v_sortBy =3 && v_orderBy = 1)THEN
-			SET @query = REPLACE(@query, 'GROUP by f.id order by condition', 'AND f.costPerMonth !=0 GROUP by f.id order by f.costPerMonth asc, f.averageRating desc');
-            SET @queryOne = CONCAT(@queryOne, ' AND f.costPerMonth !=0');
-		ELSEIF(v_sortBy = 1 && v_orderBy = 0)THEN
-			SET @query = REPLACE(@query, 'GROUP by f.id order by condition', 'AND f.costPerHour !=0 GROUP by f.id order by f.costPerHour desc, f.averageRating desc');
-            SET @queryOne = CONCAT(@queryOne, ' AND f.costPerHour !=0');
-		ELSEIF(v_sortBy = 2 && v_orderBy = 0)THEN
-			SET @query= REPLACE(@query, 'GROUP by f.id order by condition', 'AND f.costPerDay !=0 GROUP by f.id order by f.costPerDay desc, f.averageRating desc');
-            SET @queryOne = CONCAT(@queryOne, ' AND f.costPerDay !=0');
-		ELSEIF(v_sortBy = 3 && v_orderBy = 0)THEN
-			SET @query = REPLACE(@query, 'GROUP by f.id order by condition', 'AND f.costPerMonth !=0 GROUP by f.id order by f.costPerMonth desc, f.averageRating desc');
-            SET @queryOne = CONCAT(@queryOne, ' AND f.costPerMonth !=0');
-		ELSE
-			SET @query = REPLACE(@query, 'order by condition', 'order by f.averageRating desc');
-		END IF;
 	
-		    
     SET @queryOne = REPLACE(@queryOne, 'v_minCapacity', v_minCapacity);
     SET @queryOne = REPLACE(@queryOne, 'v_maxCapacity', v_maxCapacity);
     SET @queryOne = REPLACE(@queryOne, 'v_cityId', v_cityId);
@@ -3726,14 +3450,14 @@ SELECT DATE_ADD(v_fromDateTime, INTERVAL 1 SECOND), DATE_SUB(v_toDateTime, INTER
     
     SET @query = REPLACE(@query, 'v_lowerBound', v_lowerBound);
 
-	PREPARE stmt FROM @query;
+    PREPARE stmt FROM @query;
     EXECUTE stmt;
-	
+    
     PREPARE stmt FROM @queryOne;
     EXECUTE stmt;
+    
     SET v_counting = @v_totalRecords;
     
-
 
 /*Facility Listing for Service Provider*/
 ELSEIF(v_operation = 2)THEN
@@ -3823,7 +3547,7 @@ ELSEIF(v_operation = 4)THEN
 	END IF;
 		
 		END IF;
-END;;
+END ;;
 DELIMITER ;
 /*!50003 SET sql_mode              = @saved_sql_mode */ ;
 /*!50003 SET character_set_client  = @saved_cs_client */ ;
@@ -4019,3 +3743,4 @@ DELIMITER ;
 /*!50003 SET character_set_client  = @saved_cs_client */ ;
 /*!50003 SET character_set_results = @saved_cs_results */ ;
 /*!50003 SET collation_connection  = @saved_col_connection */ ;
+
